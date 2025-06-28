@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Attendance Dashboard</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #ffffff;
+      margin: 0;
+      padding: 1rem;
+    }
+    h1 {
+      text-align: center;
+      color: #333;
+    }
+    table {
+      margin: auto;
+      border-collapse: collapse;
+      width: 90%;
+      background: white;
+      box-shadow: 0 0 8px rgba(0,0,0,0.1);
+    }
+    th, td {
+      padding: 0.75rem;
+      border-bottom: 1px solid #ccc;
+      text-align: left;
+    }
+    th {
+      background: #756eff;
+      color: white;
+    }
+    .late {
+      background-color: #ffcccc;
+      color: red;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <nav style="background: #94b7ff; box-shadow:0 2px 8px rgba(0,0,0,0.07); padding:0.5rem 2rem; display:flex; align-items:center; justify-content:space-between; margin-bottom:1.5rem;">
+    <div>
+      <img src="https://revaeduin.s3.ap-south-1.amazonaws.com/uploads/images/67728d2fec4541735560495.webp" width="280" height="40" alt="REVA University" loading="lazy" style="vertical-align:middle;">
+    </div>
+    
+   
+ 
+  </nav>
+  
+  
+ <h1>EEE 2A Attendance Dashboard</h1>
+ <div style="text-align:center; margin-bottom: 1rem;">
+    <span id="currentDateTime" style="font-size:1.1rem; color:#444;"></span>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Name - SRN</th>
+        <th>In Time</th>
+        <th>Out Time</th>
+      </tr>
+    </thead>
+    <tbody id="attendanceTable">
+      <!-- Attendance data here -->
+    </tbody>
+  </table>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
+    import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-database.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-analytics.js";
+
+    const firebaseConfig = {
+      apiKey: "",
+      authDomain: "",
+      databaseURL: "",
+      projectId: "",
+      storageBucket: "",
+      messagingSenderId: "",
+      appId: "",
+      measurementId: ""
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const analytics = getAnalytics(app);
+
+    const table = document.getElementById("attendanceTable");
+
+    const attendanceRef = ref(db, "attendance");
+    onValue(attendanceRef, (snapshot) => {
+      table.innerHTML = "";
+      const raw = snapshot.val();
+
+      if (!raw) return;
+
+      // Group records by UID → Array of entries
+      const grouped = {};
+      for (let key in raw) {
+        const record = raw[key];
+        if (!grouped[record.uid]) grouped[record.uid] = [];
+        grouped[record.uid].push(record);
+      }
+
+      for (let uid in grouped) {
+        const logs = grouped[uid];
+
+        // Sort by time (earliest first)
+        logs.sort((a, b) => new Date(a.time) - new Date(b.time));
+
+        const name = logs[0]?.name || "Unknown";
+        const inTime = logs[0]?.time || "";
+        const outTime = logs[1]?.time || "";
+
+        const isLate = logs[0]?.late === true;
+
+        const row = document.createElement("tr");
+        if (isLate) row.classList.add("late");
+        row.innerHTML = `
+          <td>${name}</td>
+          <td>${inTime}</td>
+          <td>${outTime}</td>
+        `;
+        table.appendChild(row);
+      }
+    });
+  </script>
+  <script>
+    function updateDateTime() {
+      const now = new Date();
+      const options = { 
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+        hour: '2-digit', minute: '2-digit', second: '2-digit'
+      };
+      document.getElementById('currentDateTime').textContent = now.toLocaleString(undefined, options);
+    }
+    updateDateTime();
+    setInterval(updateDateTime, 1000);
+  </script>
+
+</body>
+</html>
